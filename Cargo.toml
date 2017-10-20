@@ -11,6 +11,10 @@ path = "src/lib.rs"
 name = "pkg"
 path = "src/bin/pkg.rs"
 
+[[bin]]
+name = "cook"
+path = "src/bin/cook.rs"
+
 [dependencies]
 clap = {version = "2.25", default-features = false}
 hyper-rustls = "0.6"
@@ -22,6 +26,7 @@ serde_derive = "1.0"
 tar = { git = "https://github.com/redox-os/tar-rs" }
 toml = "0.4"
 version-compare = "0.0.4"
+ion-shell = { git = "https://github.com/redox-os/ion" }
 
 [dependencies.hyper]
 version = "0.10"
