@@ -53,7 +53,7 @@ fn main() {
         "test" => { /*XXX*/ }
         "clean" => { /*XXX*/ }
         "stage" => stage(&mut shell),
-        "unstage" => { /*XXX*/ }
+        "unstage" => unstage(),
         "tar" => tar(&shell, target),
         "untar" => { /*XXX*/ }
         "publish" => { /*XXX*/ }
@@ -95,6 +95,7 @@ fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> bool {
 }
 
 fn unstage() {
+    fs::remove_dir_all("stage");
 }
 
 fn stage(shell: &mut Shell) {
