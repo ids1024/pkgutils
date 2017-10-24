@@ -33,8 +33,8 @@ fn main() {
             tar(&shell, target);
         }
         "distclean" => { /*XXX*/ }
-        "fetch" => { /*XXX*/ }
-        "unfetch" => { /*XXX*/ }
+        "fetch" => fetch(&mut shell),
+        "unfetch" => unfetch(),
         "status" => { /*XXX*/ }
         "status_origin" => { /*XXX*/ }
         "status_upstream" => { /*XXX*/ }
@@ -46,7 +46,7 @@ fn main() {
         "difftool_upstream" => { /*XXX*/ }
         "update" => { /*XXX*/ }
         "prepare" => { /*XXX*/ }
-        "unprepare" => { /*XXX*/ }
+        "unprepare" => unprepare(),
         "version" => { /*XXX*/ }
         "gitversion" => { /*XXX*/ }
         "build" => { /*XXX*/ }
@@ -94,12 +94,28 @@ fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> bool {
     shell.variables.get_var("skip") == Some("1".to_string())
 }
 
-fn unstage() {
-    fs::remove_dir_all("stage");
+fn fetch(shell: &mut Shell) {
+}
+
+fn unfetch() {
+    fs::remove_dir_all("source");
+    fs::remove_file("source.tar");
+}
+
+//fn prepare() {
+//    unprepare();
+//}
+
+fn unprepare() {
+    fs::remove_dir_all("build");
 }
 
 fn stage(shell: &mut Shell) {
     unstage();
     fs::create_dir("stage");
     let skip = call_func(shell, "stage", &["./stage"]);
+}
+
+fn unstage() {
+    fs::remove_dir_all("stage");
 }
