@@ -9,6 +9,7 @@ extern crate serde_derive;
 extern crate tar;
 extern crate toml;
 extern crate pbr;
+extern crate ion_shell;
 
 use libflate::gzip::Encoder;
 use octavo::octavo_digest::Digest;
@@ -21,10 +22,12 @@ use std::path::Path;
 pub use download::download;
 pub use packagemeta::{PackageMeta, PackageMetaList};
 pub use package::Package;
+pub use cook::Recipe;
 
 mod download;
 mod packagemeta;
 mod package;
+mod cook;
 
 pub struct Repo {
     local: String,
