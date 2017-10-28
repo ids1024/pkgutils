@@ -19,6 +19,7 @@ impl Recipe {
     pub fn new(target: String, path: &Path, debug: bool) -> Recipe {
         let mut shell = Shell::new();
         shell.flags |= ERR_EXIT;
+        shell.variables.set_var("DEBUG", if debug { "1" } else { "0" });
 
         shell.execute_script(path).unwrap();
 
