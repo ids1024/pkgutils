@@ -13,6 +13,9 @@ fn main() {
              .long("target")
              .takes_value(true)
              )
+        .arg(Arg::with_name("debug")
+             .long("debug")
+             )
         .arg(Arg::with_name("command")
              .multiple(true)
              .required(true)
@@ -20,13 +23,14 @@ fn main() {
         .get_matches();
 
     let target = matches.value_of("target").unwrap_or(env!("PKG_DEFAULT_TARGET"));
+    let debug = matches.is_present("debug");
 
     let recipe_path = Path::new("recipe.ion");
     if !recipe_path.exists() {
         eprintln!("No recipe.ion in current directory");
     }
 
-    let mut recipe = Recipe::new(target.to_string(), recipe_path);
+    let mut recipe = Recipe::new(target.to_string(), recipe_path, debug);
 
     for cmd in matches.values_of("command").unwrap() {
         match cmd {

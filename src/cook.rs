@@ -11,16 +11,18 @@ use ::{PackageMeta, Repo};
 pub struct Recipe {
     target: String,
     shell: Shell,
+    #[allow(dead_code)]
+    debug: bool,
 }
 
 impl Recipe {
-    pub fn new(target: String, path: &Path) -> Recipe {
+    pub fn new(target: String, path: &Path, debug: bool) -> Recipe {
         let mut shell = Shell::new();
         shell.flags |= ERR_EXIT;
 
         shell.execute_script(path).unwrap();
 
-        Recipe { target, shell }
+        Recipe { target, shell, debug }
     }
 
     fn call_func(&mut self, func: &str, args: &[&str]) -> bool {
