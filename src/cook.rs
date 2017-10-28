@@ -9,17 +9,18 @@ use ion_shell::shell::library::IonLibrary;
 use ::{PackageMeta, Repo};
 
 pub struct Recipe {
+    target: String,
     shell: Shell,
 }
 
 impl Recipe {
-    pub fn new(path: &Path) -> Recipe {
+    pub fn new(target: String, path: &Path) -> Recipe {
         let mut shell = Shell::new();
         shell.flags |= ERR_EXIT;
 
         shell.execute_script(path).unwrap();
 
-        Recipe { shell }
+        Recipe { target, shell }
     }
 
     fn call_func(&mut self, func: &str, args: &[&str]) -> bool {
@@ -36,13 +37,13 @@ impl Recipe {
         self.shell.variables.get_var("skip") == Some("1".to_string())
     }
 
-    pub fn tar(&self, target: &str) {
+    pub fn tar(&self) {
         let version = "1"; // XXX
         let name = self.shell.variables.get_var("NAME").expect("Package missing NAME");
         let meta = PackageMeta {
             name: name.clone(),
             version: version.to_string(),
-            target: target.to_string(),
+            target: self.target.clone(),
         };
 
         fs::create_dir_all("stage/pkg").unwrap();
@@ -50,7 +51,7 @@ impl Recipe {
         manifest.write_all(meta.to_toml().as_bytes()).unwrap();
         drop(manifest);
 
-        let repo = Repo::new(target);
+        let repo = Repo::new(&self.target);
         repo.create("stage").unwrap();
     }
 

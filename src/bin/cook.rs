@@ -26,7 +26,7 @@ fn main() {
         eprintln!("No recipe.ion in current directory");
     }
 
-    let mut recipe = Recipe::new(recipe_path);
+    let mut recipe = Recipe::new(target.to_string(), recipe_path);
 
     for cmd in matches.values_of("command").unwrap() {
         match cmd {
@@ -34,7 +34,7 @@ fn main() {
                 //prepare
                 //build
                 recipe.stage();
-                recipe.tar(target);
+                recipe.tar();
             }
             "distclean" => { /*XXX*/ }
             "fetch" => recipe.fetch(),
@@ -58,7 +58,7 @@ fn main() {
             "clean" => { /*XXX*/ }
             "stage" => recipe.stage(),
             "unstage" => recipe.unstage(),
-            "tar" => recipe.tar(target),
+            "tar" => recipe.tar(),
             "untar" => { /*XXX*/ }
             "publish" => { /*XXX*/ }
             "unpublish" => { /*XXX*/ }
