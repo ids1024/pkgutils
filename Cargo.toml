@@ -27,6 +27,7 @@ tar = { git = "https://github.com/redox-os/tar-rs" }
 toml = "0.4"
 version-compare = "0.0.4"
 ion-shell = { git = "https://github.com/redox-os/ion" }
+termion = "1.5"
 
 [dependencies.hyper]
 version = "0.10"
