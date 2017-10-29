@@ -6,7 +6,7 @@ use ion_shell::Shell;
 use ion_shell::shell::flags::ERR_EXIT;
 use ion_shell::shell::library::IonLibrary;
 
-use ::{PackageMeta, Repo};
+use ::{PackageMeta, Repo, download};
 
 pub struct Recipe {
     target: String,
@@ -26,8 +26,7 @@ impl Recipe {
         Recipe { target, shell, debug }
     }
 
-    fn call_func(&mut self, func: &str, args: &[&str]) -> bool {
-        self.shell.variables.set_var("skip", "0");
+    fn call_func(&mut self, func: &str, args: &[&str]) {
         if self.shell.functions.contains_key(func) {
             let mut cmd = func.to_string();
             // NOTE no escaping is performed
@@ -37,7 +36,6 @@ impl Recipe {
             }
             self.shell.execute_command(&cmd);
         }
-        self.shell.variables.get_var("skip") == Some("1".to_string())
     }
 
     pub fn tar(&self) {
@@ -59,6 +57,8 @@ impl Recipe {
     }
 
     pub fn fetch(&self) {
+        let src = self.shell.variables.get_var("SRC").unwrap();
+        download(&src, "source.tar").unwrap();
     }
 
     pub fn unfetch(&self) {
@@ -74,10 +74,22 @@ impl Recipe {
         fs::remove_dir_all("build").unwrap();
     }
 
+    pub fn build(&mut self) {
+        self.call_func("build", &[]);
+    }
+
+    pub fn test(&mut self) {
+        self.call_func("test", &[]);
+    }
+
+    pub fn clean(&mut self) {
+        self.call_func("clean", &[]);
+    }
+
     pub fn stage(&mut self) {
         self.unstage();
         fs::create_dir("stage").unwrap();
-        let _skip = self.call_func("stage", &["./stage"]);
+        self.call_func("stage", &["./stage"]);
     }
 
     pub fn unstage(&self) {

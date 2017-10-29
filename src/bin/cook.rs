@@ -36,7 +36,7 @@ fn main() {
         match cmd {
             "dist" => {
                 //prepare
-                //build
+                recipe.build();
                 recipe.stage();
                 recipe.tar();
             }
@@ -57,9 +57,9 @@ fn main() {
             "unprepare" => recipe.unprepare(),
             "version" => { /*XXX*/ }
             "gitversion" => { /*XXX*/ }
-            "build" => { /*XXX*/ }
-            "test" => { /*XXX*/ }
-            "clean" => { /*XXX*/ }
+            "build" => recipe.build(),
+            "test" => recipe.test(),
+            "clean" => recipe.clean(),
             "stage" => recipe.stage(),
             "unstage" => recipe.unstage(),
             "tar" => recipe.tar(),
