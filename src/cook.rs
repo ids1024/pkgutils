@@ -27,7 +27,9 @@ impl Recipe {
     }
 
     fn call_func(&mut self, func: &str, args: &[&str]) {
-        if self.shell.functions.contains_key(func) {
+        if self.shell.functions.contains_key(func) || 
+           self.shell.variables.aliases.contains_key(func)
+        {
             let mut cmd = func.to_string();
             // NOTE no escaping is performed
             for arg in args {
