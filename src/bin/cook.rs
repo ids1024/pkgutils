@@ -1,11 +1,13 @@
 extern crate ion_shell;
 extern crate pkgutils;
 extern crate clap;
+extern crate termion;
 
 use std::path::Path;
 
 use pkgutils::Recipe;
 use clap::{App, Arg};
+use termion::{color, style};
 
 fn main() {
     let matches = App::new("cook")
@@ -33,6 +35,12 @@ fn main() {
     let mut recipe = Recipe::new(target.to_string(), recipe_path, debug);
 
     for cmd in matches.values_of("command").unwrap() {
+        println!("{}{}cook - {}{}{}", 
+                 style::Bold,
+                 color::Fg(color::Yellow),
+                 cmd,
+                 color::Fg(color::Reset),
+                 style::NoBold);
         match cmd {
             "dist" => {
                 //prepare
