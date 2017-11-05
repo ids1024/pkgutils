@@ -20,6 +20,7 @@ enum Source {
 pub enum CookError {
     IO(io::Error),
     Ion(IonError),
+    MissingVar(String),
 }
 
 impl From<io::Error> for CookError {
@@ -39,6 +40,8 @@ impl Display for CookError {
         match *self {
             CookError::IO(ref e) => e.fmt(fmt),
             CookError::Ion(ref e) => e.fmt(fmt),
+            CookError::MissingVar(ref var) =>
+                fmt.write_fmt(format_args!("Recipe missing '{}' variable", var))
         }
     }
 }
@@ -77,7 +80,8 @@ impl Recipe {
 
     pub fn tar(&mut self) -> Result<()> {
         let version = self.version()?;
-        let name = self.shell.get_var("name").expect("Package missing 'name'");
+        let name = self.shell.get_var("name")
+            .ok_or(CookError::MissingVar("name".to_string()))?;
         let depends = self.shell.get_array("depends").unwrap_or(&[]);
         let meta = PackageMeta {
             name: name.clone(),
@@ -106,7 +110,8 @@ impl Recipe {
     }
 
     pub fn fetch(&self) -> Result<()> {
-        let src = self.shell.get_var("src").unwrap();
+        let src = self.shell.get_var("src")
+            .ok_or(CookError::MissingVar("src".to_string()))?;
         download(&src, "source.tar")?;
         Ok(())
     }
