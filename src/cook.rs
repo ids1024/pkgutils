@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
+use std::process;
 
 use ion_shell::Shell;
 use ion_shell::shell::IonError;
@@ -47,11 +48,12 @@ impl Recipe {
     pub fn tar(&mut self) {
         let version = self.version();
         let name = self.shell.get_var("name").expect("Package missing 'name'");
+        let depends = self.shell.get_array("depends").unwrap_or(&[]);
         let meta = PackageMeta {
             name: name.clone(),
             version: version.to_string(),
             target: self.target.clone(),
-            depends: Vec::new(),
+            depends: depends.to_vec(),
         };
 
         fs::create_dir_all("stage/pkg").unwrap();
@@ -61,6 +63,15 @@ impl Recipe {
 
         let repo = Repo::new(&self.target);
         repo.create("stage").unwrap();
+    }
+
+    pub fn untar(&self) {
+        if let Err(err) = fs::remove_file("stage.tar") {
+            if err.kind() != io::ErrorKind::NotFound {
+                eprintln!("cook: untar failed: {}", err);
+                process::exit(1);
+            }
+        }
     }
 
     pub fn fetch(&self) {

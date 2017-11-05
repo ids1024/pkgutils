@@ -71,7 +71,7 @@ fn main() {
             "stage" => recipe.stage(),
             "unstage" => recipe.unstage(),
             "tar" => recipe.tar(),
-            "untar" => { /*XXX*/ }
+            "untar" => recipe.untar(),
             "publish" => { /*XXX*/ }
             "unpublish" => { /*XXX*/ }
             _ => { /*XXX*/ }
