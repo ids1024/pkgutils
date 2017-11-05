@@ -1,12 +1,18 @@
 use std::path::Path;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{Read, Write};
 
 use ion_shell::Shell;
+use ion_shell::shell::IonError;
 use ion_shell::shell::flags::ERR_EXIT;
-use ion_shell::shell::library::IonLibrary;
 
 use ::{PackageMeta, Repo, download};
+
+#[allow(dead_code)]
+enum Source {
+    Git(String, Option<String>),
+    Tar(String)
+}
 
 pub struct Recipe {
     target: String,
@@ -15,11 +21,19 @@ pub struct Recipe {
     debug: bool,
 }
 
+fn call_func(shell: &mut Shell, func: &str, args: &[&str]) {
+    match shell.execute_function(func, args) {
+        Err(IonError::DoesNotExist) => {},
+        Err(e) => Err(e).unwrap(),
+        Ok(_status) => {},
+    }
+}
+
 impl Recipe {
     pub fn new(target: String, path: &Path, debug: bool) -> Recipe {
         let mut shell = Shell::new();
         shell.flags |= ERR_EXIT;
-        shell.variables.set_var("DEBUG", if debug { "1" } else { "0" });
+        shell.set_var("DEBUG", if debug { "1" } else { "0" });
 
         shell.execute_script(path).unwrap();
 
@@ -27,22 +41,12 @@ impl Recipe {
     }
 
     fn call_func(&mut self, func: &str, args: &[&str]) {
-        if self.shell.functions.contains_key(func) || 
-           self.shell.variables.aliases.contains_key(func)
-        {
-            let mut cmd = func.to_string();
-            // NOTE no escaping is performed
-            for arg in args {
-                cmd.push(' ');
-                cmd.push_str(arg);
-            }
-            self.shell.execute_command(&cmd);
-        }
+        call_func(&mut self.shell, func, args);
     }
 
-    pub fn tar(&self) {
-        let version = "1"; // XXX
-        let name = self.shell.variables.get_var("NAME").expect("Package missing NAME");
+    pub fn tar(&mut self) {
+        let version = self.version();
+        let name = self.shell.get_var("name").expect("Package missing 'name'");
         let meta = PackageMeta {
             name: name.clone(),
             version: version.to_string(),
@@ -59,7 +63,7 @@ impl Recipe {
     }
 
     pub fn fetch(&self) {
-        let src = self.shell.variables.get_var("SRC").unwrap();
+        let src = self.shell.get_var("src").unwrap();
         download(&src, "source.tar").unwrap();
     }
 
@@ -95,6 +99,16 @@ impl Recipe {
     }
 
     pub fn unstage(&self) {
-        fs::remove_dir_all("stage").unwrap();
+        let _ = fs::remove_dir_all("stage");
+    }
+
+    pub fn version(&mut self) -> String {
+        let mut ver = String::new();
+        let mut res = self.shell.fork(|shell| call_func(shell, "version", &["version"])).unwrap();
+        res.stdout.read_to_string(&mut ver).unwrap();
+        if ver.ends_with("\n") {
+            ver.pop();
+        }
+        ver
     }
 }

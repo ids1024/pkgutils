@@ -63,7 +63,7 @@ fn main() {
             "update" => { /*XXX*/ }
             "prepare" => { /*XXX*/ }
             "unprepare" => recipe.unprepare(),
-            "version" => { /*XXX*/ }
+            "version" => println!("{}", recipe.version()),
             "gitversion" => { /*XXX*/ }
             "build" => recipe.build(),
             "test" => recipe.test(),
