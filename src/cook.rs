@@ -21,6 +21,7 @@ pub enum CookError {
     IO(io::Error),
     Ion(IonError),
     MissingVar(String),
+    NonZero(String, i32),
 }
 
 impl From<io::Error> for CookError {
@@ -41,7 +42,9 @@ impl Display for CookError {
             CookError::IO(ref e) => e.fmt(fmt),
             CookError::Ion(ref e) => e.fmt(fmt),
             CookError::MissingVar(ref var) =>
-                fmt.write_fmt(format_args!("Recipe missing '{}' variable", var))
+                fmt.write_fmt(format_args!("Recipe missing '{}' variable", var)),
+            CookError::NonZero(ref func, status) =>
+                fmt.write_fmt(format_args!("Function {}() returned {}'", func, status)),
         }
     }
 }
@@ -55,11 +58,12 @@ pub struct Recipe {
     debug: bool,
 }
 
-fn call_func(shell: &mut Shell, func: &str, args: &[&str]) {
+fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
     match shell.execute_function(func, args) {
-        Err(IonError::DoesNotExist) => {},
-        Err(e) => Err(e).unwrap(),
-        Ok(_status) => {},
+        Err(IonError::DoesNotExist) => Ok(()),
+        Err(e) => Err(e.into()),
+        Ok(0) => Ok(()),
+        Ok(status) => Err(CookError::NonZero(func.to_string(), status)),
     }
 }
 
@@ -74,8 +78,8 @@ impl Recipe {
         Recipe { target, shell, debug }
     }
 
-    fn call_func(&mut self, func: &str, args: &[&str]) {
-        call_func(&mut self.shell, func, args);
+    fn call_func(&mut self, func: &str, args: &[&str]) -> Result<()> {
+        call_func(&mut self.shell, func, args)
     }
 
     pub fn tar(&mut self) -> Result<()> {
@@ -136,25 +140,21 @@ impl Recipe {
     }
 
     pub fn build(&mut self) -> Result<()> {
-        self.call_func("build", &[]);
-        Ok(())
+        self.call_func("build", &[])
     }
 
     pub fn test(&mut self) -> Result<()> {
-        self.call_func("test", &[]);
-        Ok(())
+        self.call_func("test", &[])
     }
 
     pub fn clean(&mut self) -> Result<()> {
-        self.call_func("clean", &[]);
-        Ok(())
+        self.call_func("clean", &[])
     }
 
     pub fn stage(&mut self) -> Result<()> {
         self.unstage()?;
         fs::create_dir("stage")?;
-        self.call_func("stage", &["./stage"]);
-        Ok(())
+        self.call_func("stage", &["./stage"])
     }
 
     pub fn unstage(&self) -> Result<()> {
@@ -168,7 +168,9 @@ impl Recipe {
 
     pub fn version(&mut self) -> Result<String> {
         let mut ver = String::new();
-        let mut res = self.shell.fork(|shell| call_func(shell, "version", &["version"]))?;
+        let mut res = self.shell.fork(|shell| {
+            call_func(shell, "version", &["version"]).unwrap();
+        })?;
         res.stdout.read_to_string(&mut ver)?;
         if ver.ends_with("\n") {
             ver.pop();
