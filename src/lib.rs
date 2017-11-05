@@ -10,6 +10,9 @@ extern crate tar;
 extern crate toml;
 extern crate pbr;
 extern crate ion_shell;
+extern crate petgraph;
+extern crate bidir_map;
+extern crate ordermap;
 
 use libflate::gzip::Encoder;
 use octavo::octavo_digest::Digest;
@@ -28,6 +31,7 @@ mod download;
 mod packagemeta;
 mod package;
 mod cook;
+mod database;
 
 pub struct Repo {
     local: String,

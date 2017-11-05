@@ -51,6 +51,7 @@ impl Recipe {
             name: name.clone(),
             version: version.to_string(),
             target: self.target.clone(),
+            depends: Vec::new(),
         };
 
         fs::create_dir_all("stage/pkg").unwrap();
