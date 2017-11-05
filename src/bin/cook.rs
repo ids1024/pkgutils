@@ -44,7 +44,7 @@ fn main() {
     let mut recipe = Recipe::new(target.to_string(), recipe_path, debug);
 
     for cmd in matches.values_of("command").unwrap() {
-        println!("{}{}cook - {}{}{}", 
+        eprintln!("{}{}cook - {}{}{}", 
                  style::Bold,
                  color::Fg(color::Yellow),
                  cmd,
