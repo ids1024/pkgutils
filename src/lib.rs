@@ -25,6 +25,7 @@ use std::path::Path;
 pub use download::download;
 pub use packagemeta::{PackageMeta, PackageMetaList};
 pub use package::Package;
+pub use database::Database;
 pub use cook::Recipe;
 
 mod download;
