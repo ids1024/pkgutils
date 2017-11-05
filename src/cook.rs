@@ -28,6 +28,12 @@ impl From<io::Error> for CookError {
     }
 }
 
+impl From<IonError> for CookError {
+    fn from(err: IonError) -> CookError {
+        CookError::Ion(err)
+    }
+}
+
 impl Display for CookError {
     fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
         match *self {
@@ -86,7 +92,7 @@ impl Recipe {
         drop(manifest);
 
         let repo = Repo::new(&self.target);
-        repo.create("stage").unwrap();
+        repo.create("stage")?;
         Ok(())
     }
 
@@ -101,7 +107,7 @@ impl Recipe {
 
     pub fn fetch(&self) -> Result<()> {
         let src = self.shell.get_var("src").unwrap();
-        download(&src, "source.tar").unwrap();
+        download(&src, "source.tar")?;
         Ok(())
     }
 
@@ -157,7 +163,7 @@ impl Recipe {
 
     pub fn version(&mut self) -> Result<String> {
         let mut ver = String::new();
-        let mut res = self.shell.fork(|shell| call_func(shell, "version", &["version"])).unwrap();
+        let mut res = self.shell.fork(|shell| call_func(shell, "version", &["version"]))?;
         res.stdout.read_to_string(&mut ver)?;
         if ver.ends_with("\n") {
             ver.pop();
