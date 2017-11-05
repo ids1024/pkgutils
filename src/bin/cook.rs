@@ -4,10 +4,19 @@ extern crate clap;
 extern crate termion;
 
 use std::path::Path;
+use std::process;
 
-use pkgutils::Recipe;
+use pkgutils::{Recipe, CookError};
 use clap::{App, Arg};
 use termion::{color, style};
+
+fn dist(recipe: &mut Recipe) -> Result<(), CookError> {
+    //recipe.prepare()?;
+    recipe.build()?;
+    recipe.stage()?;
+    recipe.tar()?;
+    Ok(())
+}
 
 fn main() {
     let matches = App::new("cook")
@@ -41,30 +50,32 @@ fn main() {
                  cmd,
                  color::Fg(color::Reset),
                  style::NoBold);
-        match cmd {
-            "dist" => {
-                //prepare
-                recipe.build();
-                recipe.stage();
-                recipe.tar();
-            }
-            "distclean" => { /*XXX*/ }
+
+        let res = match cmd {
+            "dist" => dist(&mut recipe),
+            "distclean" => Ok(()), // XXX
             "fetch" => recipe.fetch(),
             "unfetch" => recipe.unfetch(),
-            "status" => { /*XXX*/ }
-            "status_origin" => { /*XXX*/ }
-            "status_upstream" => { /*XXX*/ }
-            "diff" => { /*XXX*/ }
-            "diff_origin" => { /*XXX*/ }
-            "diff_upstream" => { /*XXX*/ }
-            "difftool" => { /*XXX*/ }
-            "difftool_origin" => { /*XXX*/ }
-            "difftool_upstream" => { /*XXX*/ }
-            "update" => { /*XXX*/ }
-            "prepare" => { /*XXX*/ }
+            "status" => Ok(()), // XXX
+            "status_origin" => Ok(()), // XXX
+            "status_upstream" => Ok(()), // XXX
+            "diff" => Ok(()), // XXX
+            "diff_origin" => Ok(()), // XXX
+            "diff_upstream" => Ok(()), // XXX
+            "difftool" => Ok(()), // XXX
+            "difftool_origin" => Ok(()), // XXX
+            "difftool_upstream" => Ok(()), // XXX
+            "update" => Ok(()), // XXX
+            "prepare" => Ok(()), // XXX
             "unprepare" => recipe.unprepare(),
-            "version" => println!("{}", recipe.version()),
-            "gitversion" => { /*XXX*/ }
+            "version" => match recipe.version() {
+                Ok(version) => {
+                    println!("{}", version);
+                    Ok(())
+                }
+                Err(e) => Err(e)
+            }
+            "gitversion" => Ok(()), // XXX
             "build" => recipe.build(),
             "test" => recipe.test(),
             "clean" => recipe.clean(),
@@ -72,9 +83,14 @@ fn main() {
             "unstage" => recipe.unstage(),
             "tar" => recipe.tar(),
             "untar" => recipe.untar(),
-            "publish" => { /*XXX*/ }
-            "unpublish" => { /*XXX*/ }
-            _ => { /*XXX*/ }
+            "publish" => Ok(()), // XXX
+            "unpublish" => Ok(()), // XXX
+            _ => Ok(()) // XXX
+        };
+
+        if let Err(err) = res {
+            eprintln!("cook: {} error: {}", cmd, err);
+            process::exit(1);
         }
     }
 }

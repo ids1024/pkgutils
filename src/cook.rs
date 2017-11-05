@@ -1,7 +1,8 @@
+use std;
 use std::path::Path;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
-use std::process;
+use std::fmt::{self, Display, Formatter};
 
 use ion_shell::Shell;
 use ion_shell::shell::IonError;
@@ -14,6 +15,29 @@ enum Source {
     Git(String, Option<String>),
     Tar(String)
 }
+
+#[derive(Debug)]
+pub enum CookError {
+    IO(io::Error),
+    Ion(IonError),
+}
+
+impl From<io::Error> for CookError {
+    fn from(err: io::Error) -> CookError {
+        CookError::IO(err)
+    }
+}
+
+impl Display for CookError {
+    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
+        match *self {
+            CookError::IO(ref e) => e.fmt(fmt),
+            CookError::Ion(ref e) => e.fmt(fmt),
+        }
+    }
+}
+
+type Result<T> = std::result::Result<T, CookError>;
 
 pub struct Recipe {
     target: String,
@@ -45,8 +69,8 @@ impl Recipe {
         call_func(&mut self.shell, func, args);
     }
 
-    pub fn tar(&mut self) {
-        let version = self.version();
+    pub fn tar(&mut self) -> Result<()> {
+        let version = self.version()?;
         let name = self.shell.get_var("name").expect("Package missing 'name'");
         let depends = self.shell.get_array("depends").unwrap_or(&[]);
         let meta = PackageMeta {
@@ -56,71 +80,88 @@ impl Recipe {
             depends: depends.to_vec(),
         };
 
-        fs::create_dir_all("stage/pkg").unwrap();
-        let mut manifest = File::create(format!("stage/pkg/{}.toml", name)).unwrap();
-        manifest.write_all(meta.to_toml().as_bytes()).unwrap();
+        fs::create_dir_all("stage/pkg")?;
+        let mut manifest = File::create(format!("stage/pkg/{}.toml", name))?;
+        manifest.write_all(meta.to_toml().as_bytes())?;
         drop(manifest);
 
         let repo = Repo::new(&self.target);
         repo.create("stage").unwrap();
+        Ok(())
     }
 
-    pub fn untar(&self) {
+    pub fn untar(&self) -> Result<()> {
         if let Err(err) = fs::remove_file("stage.tar") {
             if err.kind() != io::ErrorKind::NotFound {
-                eprintln!("cook: untar failed: {}", err);
-                process::exit(1);
+                return Err(err.into());
             }
         }
+        Ok(())
     }
 
-    pub fn fetch(&self) {
+    pub fn fetch(&self) -> Result<()> {
         let src = self.shell.get_var("src").unwrap();
         download(&src, "source.tar").unwrap();
+        Ok(())
     }
 
-    pub fn unfetch(&self) {
-        fs::remove_dir_all("source").unwrap();
-        fs::remove_file("source.tar").unwrap();
+    pub fn unfetch(&self) -> Result<()> {
+        fs::remove_dir_all("source")?;
+        fs::remove_file("source.tar")?;
+        Ok(())
     }
 
     //fn prepare(&self) {
     //    unprepare();
     //}
 
-    pub fn unprepare(&self) {
-        fs::remove_dir_all("build").unwrap();
+    pub fn unprepare(&self) -> Result<()> {
+        if let Err(err) = fs::remove_dir_all("build") {
+            if err.kind() != io::ErrorKind::NotFound {
+                return Err(err.into());
+            }
+        }
+        Ok(())
     }
 
-    pub fn build(&mut self) {
+    pub fn build(&mut self) -> Result<()> {
         self.call_func("build", &[]);
+        Ok(())
     }
 
-    pub fn test(&mut self) {
+    pub fn test(&mut self) -> Result<()> {
         self.call_func("test", &[]);
+        Ok(())
     }
 
-    pub fn clean(&mut self) {
+    pub fn clean(&mut self) -> Result<()> {
         self.call_func("clean", &[]);
+        Ok(())
     }
 
-    pub fn stage(&mut self) {
-        self.unstage();
-        fs::create_dir("stage").unwrap();
+    pub fn stage(&mut self) -> Result<()> {
+        self.unstage()?;
+        fs::create_dir("stage")?;
         self.call_func("stage", &["./stage"]);
+        Ok(())
     }
 
-    pub fn unstage(&self) {
-        let _ = fs::remove_dir_all("stage");
+    pub fn unstage(&self) -> Result<()> {
+        if let Err(err) = fs::remove_dir_all("stage") {
+            if err.kind() != io::ErrorKind::NotFound {
+                return Err(err.into());
+            }
+        }
+        Ok(())
     }
 
-    pub fn version(&mut self) -> String {
+    pub fn version(&mut self) -> Result<String> {
         let mut ver = String::new();
         let mut res = self.shell.fork(|shell| call_func(shell, "version", &["version"])).unwrap();
-        res.stdout.read_to_string(&mut ver).unwrap();
+        res.stdout.read_to_string(&mut ver)?;
         if ver.ends_with("\n") {
             ver.pop();
         }
-        ver
+        Ok(ver)
     }
 }

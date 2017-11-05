@@ -26,7 +26,7 @@ pub use download::download;
 pub use packagemeta::{PackageMeta, PackageMetaList};
 pub use package::Package;
 pub use database::Database;
-pub use cook::Recipe;
+pub use cook::{Recipe, CookError};
 
 mod download;
 mod packagemeta;
