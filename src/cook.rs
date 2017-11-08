@@ -4,9 +4,7 @@ use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::fmt::{self, Display, Formatter};
 
-use ion_shell::Shell;
-use ion_shell::shell::IonError;
-use ion_shell::shell::flags::ERR_EXIT;
+use ion_shell::{Shell, Capture, IonError};
 
 use ::{PackageMeta, Repo, download};
 
@@ -70,7 +68,7 @@ fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
 impl Recipe {
     pub fn new(target: String, path: &Path, debug: bool) -> Recipe {
         let mut shell = Shell::new();
-        shell.flags |= ERR_EXIT;
+        //XXX shell.flags |= ERR_EXIT;
         shell.set_var("DEBUG", if debug { "1" } else { "0" });
 
         shell.execute_script(path).unwrap();
@@ -168,10 +166,11 @@ impl Recipe {
 
     pub fn version(&mut self) -> Result<String> {
         let mut ver = String::new();
-        let mut res = self.shell.fork(|shell| {
+        let res = self.shell.fork(Capture::Stdout, |shell| {
             call_func(shell, "version", &["version"]).unwrap();
         })?;
-        res.stdout.read_to_string(&mut ver)?;
+        res.stdout.unwrap().read_to_string(&mut ver)?;
+        // XXX non-zero return
         if ver.ends_with("\n") {
             ver.pop();
         }
