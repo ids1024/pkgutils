@@ -80,20 +80,23 @@ impl Recipe {
         call_func(&mut self.shell, func, args)
     }
 
-    pub fn tar(&mut self) -> Result<()> {
+    pub fn meta(&mut self) -> Result<PackageMeta> {
         let version = self.version()?;
         let name = self.shell.get_var("name")
             .ok_or(CookError::MissingVar("name".to_string()))?;
         let depends = self.shell.get_array("depends").unwrap_or(&[]);
-        let meta = PackageMeta {
+        Ok(PackageMeta {
             name: name.clone(),
             version: version.to_string(),
             target: self.target.clone(),
             depends: depends.to_vec(),
-        };
+        })
+    }
 
+    pub fn tar(&mut self) -> Result<()> {
+        let meta = self.meta()?;
         fs::create_dir_all("stage/pkg")?;
-        let mut manifest = File::create(format!("stage/pkg/{}.toml", name))?;
+        let mut manifest = File::create(format!("stage/pkg/{}.toml", meta.name))?;
         manifest.write_all(meta.to_toml().as_bytes())?;
         drop(manifest);
 
