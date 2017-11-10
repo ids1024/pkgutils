@@ -80,6 +80,8 @@ impl Recipe {
         call_func(&mut self.shell, func, args)
     }
 
+    /// Return the metadata, from which /pkg/<package>.toml is generated.
+    /// This calls the recipe's version(), so it will fail if that does.
     pub fn meta(&mut self) -> Result<PackageMeta> {
         let version = self.version()?;
         let name = self.shell.get_var("name")
