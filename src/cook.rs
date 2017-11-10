@@ -66,12 +66,12 @@ fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
 }
 
 impl Recipe {
-    pub fn new(target: String, path: &Path, debug: bool) -> Recipe {
+    pub fn new<T: AsRef<Path>>(target: String, path: T, debug: bool) -> Recipe {
         let mut shell = Shell::new();
         //XXX shell.flags |= ERR_EXIT;
         shell.set_var("DEBUG", if debug { "1" } else { "0" });
 
-        shell.execute_script(path).unwrap();
+        shell.execute_script(path.as_ref()).unwrap();
 
         Recipe { target, shell, debug }
     }
