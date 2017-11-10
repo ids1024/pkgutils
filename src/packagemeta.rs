@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use toml::{self, to_string, from_str};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct PackageMeta {
     pub name: String,
     pub version: String,
