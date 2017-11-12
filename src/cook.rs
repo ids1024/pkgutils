@@ -166,7 +166,8 @@ impl Recipe {
     pub fn stage(&mut self) -> Result<()> {
         self.unstage()?;
         fs::create_dir("stage")?;
-        self.call_func("stage", &["./stage"])
+        let path = fs::canonicalize("./stage")?;
+        self.call_func("stage", &[path.to_str().unwrap()])
     }
 
     pub fn unstage(&self) -> Result<()> {
