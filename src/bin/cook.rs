@@ -27,6 +27,12 @@ fn main() {
         .arg(Arg::with_name("debug")
              .long("debug")
              )
+        .arg(Arg::with_name("template_dir")
+             .long("template_dir")
+             // TODO: Do not require this
+             .required(true)
+             .takes_value(true)
+             )
         .arg(Arg::with_name("command")
              .multiple(true)
              .required(true)
@@ -35,13 +41,14 @@ fn main() {
 
     let target = matches.value_of("target").unwrap_or(env!("PKG_DEFAULT_TARGET"));
     let debug = matches.is_present("debug");
+    let template_dir = matches.value_of("template_dir").unwrap();
 
     let recipe_path = Path::new("recipe.ion");
     if !recipe_path.exists() {
         eprintln!("No recipe.ion in current directory");
     }
 
-    let mut recipe = Recipe::new(target.to_string(), recipe_path, debug);
+    let mut recipe = Recipe::new(target.to_string(), template_dir, recipe_path, debug).unwrap();
 
     for cmd in matches.values_of("command").unwrap() {
         eprintln!("{}{}cook - {}{}{}", 

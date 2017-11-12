@@ -3,6 +3,7 @@ use std::path::Path;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::fmt::{self, Display, Formatter};
+use std::ffi::OsStr;
 
 use ion_shell::{Shell, Capture, IonError};
 
@@ -66,14 +67,22 @@ fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
 }
 
 impl Recipe {
-    pub fn new<T: AsRef<Path>>(target: String, path: T, debug: bool) -> Recipe {
+    pub fn new<T1: AsRef<Path>, T2: AsRef<Path>>(target: String, template_dir: T1, path: T2, debug: bool) -> Result<Recipe> {
         let mut shell = Shell::new();
         //XXX shell.flags |= ERR_EXIT;
         shell.set_var("DEBUG", if debug { "1" } else { "0" });
 
-        shell.execute_script(path.as_ref()).unwrap();
+        for entry in fs::read_dir(template_dir)? {
+            let entry = entry?;
+            if entry.file_type()?.is_file() &&
+               entry.path().extension() == Some(OsStr::new(".ion")) {
+                shell.execute_script(entry.path())?;
+            }
+        }
 
-        Recipe { target, shell, debug }
+        shell.execute_script(path.as_ref())?;
+
+        Ok(Recipe { target, shell, debug })
     }
 
     fn call_func(&mut self, func: &str, args: &[&str]) -> Result<()> {
