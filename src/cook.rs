@@ -58,7 +58,9 @@ pub struct Recipe {
 }
 
 fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
-    match shell.execute_function(func, args) {
+    let mut args_vec = vec![func];
+    args_vec.extend(args);
+    match shell.execute_function(func, &args_vec) {
         Err(IonError::DoesNotExist) => Ok(()),
         Err(e) => Err(e.into()),
         Ok(0) => Ok(()),
@@ -182,7 +184,7 @@ impl Recipe {
     pub fn version(&mut self) -> Result<String> {
         let mut ver = String::new();
         let res = self.shell.fork(Capture::Stdout, |shell| {
-            call_func(shell, "version", &["version"]).unwrap();
+            call_func(shell, "version", &[]).unwrap();
         })?;
         res.stdout.unwrap().read_to_string(&mut ver)?;
         // XXX non-zero return
