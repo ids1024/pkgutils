@@ -77,7 +77,7 @@ impl Recipe {
         for entry in fs::read_dir(template_dir)? {
             let entry = entry?;
             if entry.file_type()?.is_file() &&
-               entry.path().extension() == Some(OsStr::new(".ion")) {
+               entry.path().extension() == Some(OsStr::new("ion")) {
                 shell.execute_script(entry.path())?;
             }
         }
