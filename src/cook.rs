@@ -227,9 +227,11 @@ impl Recipe {
         Ok(())
     }
 
-    //fn prepare(&self) {
-    //    unprepare();
-    //}
+    pub fn prepare(&self) -> Result<()> {
+        self.unprepare()?;
+        // XXX
+        Ok(())
+    }
 
     pub fn unprepare(&self) -> Result<()> {
         try_ifexist!(fs::remove_dir_all("build"));

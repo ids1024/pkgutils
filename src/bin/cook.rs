@@ -10,10 +10,24 @@ use pkgutils::{Recipe, CookError};
 use clap::{App, Arg};
 use termion::{color, style};
 
+/// Print the name of a cook command being executed
+fn print_cmd(cmd: &str) {
+    eprintln!("{}{}cook - {}{}{}", 
+             style::Bold,
+             color::Fg(color::Yellow),
+             cmd,
+             color::Fg(color::Reset),
+             style::Reset);
+}
+
 fn dist(recipe: &mut Recipe) -> Result<(), CookError> {
-    //recipe.prepare()?;
+    print_cmd("prepare");
+    recipe.prepare()?;
+    print_cmd("build");
     recipe.build()?;
+    print_cmd("stage");
     recipe.stage()?;
+    print_cmd("tar");
     recipe.tar()?;
     Ok(())
 }
@@ -51,12 +65,7 @@ fn main() {
     let mut recipe = Recipe::new(target.to_string(), template_dir, recipe_path, debug).unwrap();
 
     for cmd in matches.values_of("command").unwrap() {
-        eprintln!("{}{}cook - {}{}{}", 
-                 style::Bold,
-                 color::Fg(color::Yellow),
-                 cmd,
-                 color::Fg(color::Reset),
-                 style::NoBold);
+        print_cmd(cmd);
 
         let res = match cmd {
             "dist" => dist(&mut recipe),
