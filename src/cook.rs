@@ -4,12 +4,12 @@ use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::fmt::{self, Display, Formatter};
 use std::ffi::OsStr;
+use std::process::Command;
 
 use ion_shell::{Shell, Capture, IonError};
 
 use ::{PackageMeta, Repo, download};
 
-#[allow(dead_code)]
 enum Source {
     Git(String, Option<String>),
     Tar(String)
@@ -43,7 +43,7 @@ impl Display for CookError {
             CookError::MissingVar(ref var) =>
                 fmt.write_fmt(format_args!("Recipe missing '{}' variable", var)),
             CookError::NonZero(ref func, status) =>
-                fmt.write_fmt(format_args!("Function {}() returned {}'", func, status)),
+                fmt.write_fmt(format_args!("{} returned non-zero status '{}'", func, status)),
         }
     }
 }
@@ -55,6 +55,30 @@ pub struct Recipe {
     shell: Shell,
     #[allow(dead_code)]
     debug: bool,
+}
+
+// try! on IOError, except NotFound is okay (for removing files/dirs)
+macro_rules! try_ifexist {
+    ( $x:expr ) => {
+        if let Err(err) = $x {
+            if err.kind() != io::ErrorKind::NotFound {
+                return Err(err.into());
+            }
+        }
+    }
+}
+
+// Return Err on non-zero status
+macro_rules! try_process_status {
+    ( $cmd:expr, $status:expr) => {
+        {
+            let status = $status.code().unwrap_or(0); // ?
+
+            if status != 0 {
+                return Err(CookError::NonZero($cmd.to_string(), status));
+            }
+        }
+    }
 }
 
 fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
@@ -85,6 +109,27 @@ impl Recipe {
         shell.execute_script(path.as_ref())?;
 
         Ok(Recipe { target, shell, debug })
+    }
+
+    fn src(&self) -> Result<Source> {
+        // Syntax based on Arch PKGBUILD
+        // TODO: Change to associative array when supported
+        let src = self.shell.get_var("src")
+            .ok_or(CookError::MissingVar("src".to_string()))?;
+
+        if src.starts_with("git://") {
+            let mut parts = src.splitn(2, "#branch=");
+            let url = parts.next().unwrap().to_string();
+            let branch = parts.next().map(str::to_string);
+            Ok(Source::Git(url, branch))
+        } else if src.starts_with("git+") {
+            let mut parts = src[4..].splitn(2, "#branch=");
+            let url = parts.next().unwrap().to_string();
+            let branch = parts.next().map(str::to_string);
+            Ok(Source::Git(url, branch))
+        } else {
+            Ok(Source::Tar(src))
+        }
     }
 
     fn call_func(&mut self, func: &str, args: &[&str]) -> Result<()> {
@@ -119,24 +164,66 @@ impl Recipe {
     }
 
     pub fn untar(&self) -> Result<()> {
-        if let Err(err) = fs::remove_file("stage.tar") {
-            if err.kind() != io::ErrorKind::NotFound {
-                return Err(err.into());
+        try_ifexist!(fs::remove_file("stage.tar"));
+        Ok(())
+    }
+
+    pub fn fetch(&self) -> Result<()> {
+        match self.src()? {
+            Source::Git(url, branch) => {
+                if !Path::new("source").is_dir() {
+                    let mut command = Command::new("git");
+                    command.args(&["clone", "--recursive", &url, "source"]);
+
+                    if let Some(branch) = branch {
+                        command.args(&["--branch", &branch]);
+                    }
+                    
+                    try_process_status!("git", command.status()?);
+                } else {
+                    macro_rules! git_cmd {
+                        ( $( $arg:expr ),+ ) => {
+                            {
+                                let status = Command::new("git")
+                                    .args(&["-C", "source", $( $arg ),+]).status()?;
+                                try_process_status!("git", status);
+
+                            }
+                        }
+                    }
+
+                    git_cmd!("remote", "set-url", "origin", &url);
+                    git_cmd!("fetch", "origin");
+                    git_cmd!("submodule", "sync", "--recursive");
+                    git_cmd!("submodule", "update", "--init", "--recursive");
+                }
+            },
+            Source::Tar(url) => {
+                if !Path::new("source.tar").is_file() {
+                    download(&url, "source.tar")?;
+                }
+
+                if !Path::new("source").is_dir() {
+                    // It might be nice to use the tar crate, but that doesn't
+                    // handle compression. The logic for detecting and handling
+                    // compression is in Redox's tar command though, and
+                    // could possibly be shared.
+                    //tar xvf source.tar -C source --strip-components 1
+                    fs::create_dir("source")?;
+                    let status = Command::new("tar")
+                        .args(&["xvf", "source.tar", "-C", "source",
+                                "--strip-components", "1"]).status()?;
+
+                    try_process_status!("tar", status);
+                }
             }
         }
         Ok(())
     }
 
-    pub fn fetch(&self) -> Result<()> {
-        let src = self.shell.get_var("src")
-            .ok_or(CookError::MissingVar("src".to_string()))?;
-        download(&src, "source.tar")?;
-        Ok(())
-    }
-
     pub fn unfetch(&self) -> Result<()> {
-        fs::remove_dir_all("source")?;
-        fs::remove_file("source.tar")?;
+        try_ifexist!(fs::remove_dir_all("source"));
+        try_ifexist!(fs::remove_file("source.tar"));
         Ok(())
     }
 
@@ -145,11 +232,7 @@ impl Recipe {
     //}
 
     pub fn unprepare(&self) -> Result<()> {
-        if let Err(err) = fs::remove_dir_all("build") {
-            if err.kind() != io::ErrorKind::NotFound {
-                return Err(err.into());
-            }
-        }
+        try_ifexist!(fs::remove_dir_all("build"));
         Ok(())
     }
 
@@ -173,11 +256,7 @@ impl Recipe {
     }
 
     pub fn unstage(&self) -> Result<()> {
-        if let Err(err) = fs::remove_dir_all("stage") {
-            if err.kind() != io::ErrorKind::NotFound {
-                return Err(err.into());
-            }
-        }
+        try_ifexist!(fs::remove_dir_all("stage"));
         Ok(())
     }
 
