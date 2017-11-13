@@ -1,4 +1,5 @@
 use std;
+use std::env;
 use std::path::Path;
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
@@ -81,15 +82,22 @@ macro_rules! try_process_status {
     }
 }
 
-fn call_func(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
+/// Call an Ion function in the source/ directory
+fn call_func_src(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
+    let prev_dir = env::current_dir()?;
+    env::set_current_dir("source")?;
+
     let mut args_vec = vec![func];
     args_vec.extend(args);
-    match shell.execute_function(func, &args_vec) {
+    let res = match shell.execute_function(func, &args_vec) {
         Err(IonError::DoesNotExist) => Ok(()),
         Err(e) => Err(e.into()),
         Ok(0) => Ok(()),
         Ok(status) => Err(CookError::NonZero(func.to_string(), status)),
-    }
+    };
+
+    env::set_current_dir(&prev_dir)?;
+    res
 }
 
 impl Recipe {
@@ -132,8 +140,8 @@ impl Recipe {
         }
     }
 
-    fn call_func(&mut self, func: &str, args: &[&str]) -> Result<()> {
-        call_func(&mut self.shell, func, args)
+    fn call_func_src(&mut self, func: &str, args: &[&str]) -> Result<()> {
+        call_func_src(&mut self.shell, func, args)
     }
 
     /// Return the metadata, from which /pkg/<package>.toml is generated.
@@ -239,22 +247,22 @@ impl Recipe {
     }
 
     pub fn build(&mut self) -> Result<()> {
-        self.call_func("build", &[])
+        self.call_func_src("build", &[])
     }
 
     pub fn test(&mut self) -> Result<()> {
-        self.call_func("test", &[])
+        self.call_func_src("test", &[])
     }
 
     pub fn clean(&mut self) -> Result<()> {
-        self.call_func("clean", &[])
+        self.call_func_src("clean", &[])
     }
 
     pub fn stage(&mut self) -> Result<()> {
         self.unstage()?;
         fs::create_dir("stage")?;
         let path = fs::canonicalize("./stage")?;
-        self.call_func("stage", &[path.to_str().unwrap()])
+        self.call_func_src("stage", &[path.to_str().unwrap()])
     }
 
     pub fn unstage(&self) -> Result<()> {
@@ -265,7 +273,7 @@ impl Recipe {
     pub fn version(&mut self) -> Result<String> {
         let mut ver = String::new();
         let res = self.shell.fork(Capture::Stdout, |shell| {
-            call_func(shell, "version", &[]).unwrap();
+            call_func_src(shell, "version", &[]).unwrap();
         })?;
         res.stdout.unwrap().read_to_string(&mut ver)?;
         // XXX non-zero return
