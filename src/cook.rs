@@ -105,6 +105,9 @@ impl Recipe {
         let mut shell = Shell::new();
         //XXX shell.flags |= ERR_EXIT;
         shell.set_var("DEBUG", if debug { "1" } else { "0" });
+        shell.set_var("TARGET", &target);
+        shell.set_var("HOST", &target);
+        shell.set_var("ARCH", target.split('_').next().unwrap());
 
         for entry in fs::read_dir(template_dir)? {
             let entry = entry?;
