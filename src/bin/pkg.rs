@@ -6,7 +6,7 @@ extern crate version_compare;
 extern crate clap;
 extern crate ordermap;
 
-use pkgutils::{Database, Repo, Package, PackageMeta, PackageMetaList};
+use pkgutils::{Database, Repo, Package, PackageDepends, PackageMeta, PackageMetaList};
 use std::{env, process};
 use std::error::Error;
 use std::fs::{self, File};
@@ -138,7 +138,7 @@ fn main() {
     let target = matches.value_of("target").unwrap_or(env!("PKG_DEFAULT_TARGET"));
 
     let repo = Repo::new(target);
-    let database = Database::open("/pkg", "/etc/pkg.d/pkglist");
+    let database = Database::open("/pkg", PackageDepends::Repository(Repo::new(target)));
 
     let mut success = true;
 
@@ -196,70 +196,31 @@ fn main() {
                     let path = env::current_dir().unwrap().join(&package);
 
                     // Extract package report errors
-                    let extracted_pkg = match Package::from_path(&path) {
-                        Ok(p) => Some(p),
+                    match Package::from_path(&path) {
+                        Ok(p) => {
+                            tar_gz_pkgs.push(p);
+                        },
                         Err(e) => {
-                            eprintln!("error: {}", e);
+                            eprintln!("error during package open: {}", e);
                             if let Some(cause) = e.cause() {
                                 eprintln!("cause: {}", cause);
                             }
                             success = false;
-                            None
-                        }
-                    };
-
-                    // Try to calculate dependencies for package if extraction was
-                    // successful.
-                    if let Some(mut pkg) = extracted_pkg {
-                        
-                        // Obtain meta data from package to figure out its dependencies
-                        let res: Option<()> = match pkg.meta() {
-                            Ok(m) => {
-                                // Calculate all dependencies and check for errors
-                                if let Err(e) = database.calculate_depends(&m.name, &mut dependencies) {
-                                    eprintln!("error: {}", e);
-                                    if let Some(cause) = e.cause() {
-                                        eprintln!("cause: {}", cause);
-                                        success = false;
-                                    }
-                                    None
-                                } else { // Dependency calculation was successful
-                                    Some(())
-                                }
-
-                            },
-                            
-                            // Something went wrong when the meta data was obtained
-                            Err(e) => {
-                                eprintln!("error: {}", e);
-                                if let Some(cause) = e.cause() {
-                                    eprintln!("cause: {}", cause);
-                                }
-                                success = false;
-                                None
-                            }
-                        };
-
-                        // Only install package if dependency calculation was successful
-                        match res {
-                            Some(_) => tar_gz_pkgs.push(pkg),
-                            None => (),
                         }
                     }
                 } else {
-                    // Package is not in current directory so calculate dependencies 
+                    // Package is not in current directory so calculate dependencies
                     // from database
                     match database.calculate_depends(package, &mut dependencies) {
-                        Ok(_) => { 
+                        Ok(_) => {
                             dependencies.insert(package.to_string(), ());
                         },
                         Err(e) => {
                             eprintln!("error during dependency calculation: {}", e);
-
                             if let Some(cause) = e.cause() {
                                 eprintln!("cause: {}", cause);
-                                success = false;
                             }
+                            success = false;
                         },
                     }
                 }

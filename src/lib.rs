@@ -25,7 +25,7 @@ use std::path::Path;
 pub use download::download;
 pub use packagemeta::{PackageMeta, PackageMetaList};
 pub use package::Package;
-pub use database::Database;
+pub use database::{Database, PackageDepends};
 pub use cook::{Recipe, CookError};
 
 mod download;
@@ -34,6 +34,7 @@ mod package;
 mod cook;
 mod database;
 
+#[derive(Debug)]
 pub struct Repo {
     local: String,
     remotes: Vec<String>,
@@ -151,6 +152,17 @@ impl Repo {
         File::create(&sigfile)?.write_all(&signature.as_bytes())?;
 
         Ok(tarfile)
+    }
+
+    pub fn fetch_meta(&self, package: &str) -> io::Result<PackageMeta> {
+        let tomlfile = self.sync(&format!("{}.toml", package))?;
+
+        let mut toml = String::new();
+        File::open(tomlfile)?.read_to_string(&mut toml)?;
+
+        PackageMeta::from_toml(&toml).map_err(|err| {
+            io::Error::new(io::ErrorKind::InvalidData, format!("TOML error: {}", err))
+        })
     }
 
     pub fn fetch(&self, package: &str) -> io::Result<Package> {
