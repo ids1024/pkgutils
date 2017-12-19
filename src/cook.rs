@@ -219,7 +219,6 @@ impl Recipe {
                     // handle compression. The logic for detecting and handling
                     // compression is in Redox's tar command though, and
                     // could possibly be shared.
-                    //tar xvf source.tar -C source --strip-components 1
                     fs::create_dir("source")?;
                     let status = Command::new("tar")
                         .args(&["xvf", "source.tar", "-C", "source",
