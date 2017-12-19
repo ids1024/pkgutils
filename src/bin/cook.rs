@@ -3,7 +3,6 @@ extern crate pkgutils;
 extern crate clap;
 extern crate termion;
 
-use std::path::Path;
 use std::process;
 
 use pkgutils::{Recipe, CookError};
@@ -41,11 +40,14 @@ fn main() {
         .arg(Arg::with_name("debug")
              .long("debug")
              )
-        .arg(Arg::with_name("template_dir")
-             .long("template_dir")
+        .arg(Arg::with_name("cookbook")
+             .long("cookbook")
              // TODO: Do not require this
              .required(true)
              .takes_value(true)
+             )
+        .arg(Arg::with_name("package")
+             .required(true)
              )
         .arg(Arg::with_name("command")
              .multiple(true)
@@ -55,14 +57,10 @@ fn main() {
 
     let target = matches.value_of("target").unwrap_or(env!("PKG_DEFAULT_TARGET"));
     let debug = matches.is_present("debug");
-    let template_dir = matches.value_of("template_dir").unwrap();
+    let package = matches.value_of("package").unwrap();
+    let cookbook_dir = matches.value_of("cookbook").unwrap();
 
-    let recipe_path = Path::new("recipe.ion");
-    if !recipe_path.exists() {
-        eprintln!("No recipe.ion in current directory");
-    }
-
-    let mut recipe = Recipe::new(target.to_string(), template_dir, recipe_path, debug).unwrap();
+    let mut recipe = Recipe::new(target.to_string(), cookbook_dir, package, debug).unwrap();
 
     for cmd in matches.values_of("command").unwrap() {
         print_cmd(cmd);

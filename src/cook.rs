@@ -101,7 +101,7 @@ fn call_func_src(shell: &mut Shell, func: &str, args: &[&str]) -> Result<()> {
 }
 
 impl Recipe {
-    pub fn new<T1: AsRef<Path>, T2: AsRef<Path>>(target: String, template_dir: T1, path: T2, debug: bool) -> Result<Recipe> {
+    pub fn new<T: AsRef<Path>>(target: String, cookbook_dir: T, package: &str, debug: bool) -> Result<Recipe> {
         let mut shell = Shell::new();
         //XXX shell.flags |= ERR_EXIT;
         shell.set_var("DEBUG", if debug { "1" } else { "0" });
@@ -109,7 +109,15 @@ impl Recipe {
         shell.set_var("HOST", &target);
         shell.set_var("ARCH", target.split('_').next().unwrap());
 
-        for entry in fs::read_dir(template_dir)? {
+        let mut template_dir = cookbook_dir.as_ref().to_path_buf();
+        template_dir.push("templates");
+
+        let mut recipe_dir = cookbook_dir.as_ref().to_path_buf();
+        recipe_dir.push("recipes");
+        recipe_dir.push(package);
+        std::env::set_current_dir(recipe_dir)?;
+
+        for entry in fs::read_dir(&template_dir)? {
             let entry = entry?;
             if entry.file_type()?.is_file() &&
                entry.path().extension() == Some(OsStr::new("ion")) {
@@ -117,7 +125,7 @@ impl Recipe {
             }
         }
 
-        shell.execute_script(path.as_ref())?;
+        shell.execute_script("recipe.ion")?;
 
         Ok(Recipe { target, shell, debug })
     }
