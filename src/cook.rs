@@ -1,6 +1,6 @@
 use std;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
 use std::fmt::{self, Display, Formatter};
@@ -56,6 +56,7 @@ pub struct Recipe {
     shell: Shell,
     #[allow(dead_code)]
     debug: bool,
+    cookbook_dir: PathBuf,
 }
 
 // try! on IOError, except NotFound is okay (for removing files/dirs)
@@ -127,7 +128,7 @@ impl Recipe {
 
         shell.execute_script("recipe.ion")?;
 
-        Ok(Recipe { target, shell, debug })
+        Ok(Recipe { target, shell, debug, cookbook_dir: cookbook_dir.as_ref().to_path_buf() })
     }
 
     fn src(&self) -> Result<Source> {
@@ -168,6 +169,10 @@ impl Recipe {
             target: self.target.clone(),
             depends: depends.to_vec(),
         })
+    }
+
+    fn build_depends(&self) -> &[String] {
+        self.shell.get_array("build_depends").unwrap_or(&[])
     }
 
     pub fn tar(&mut self) -> Result<()> {
@@ -247,7 +252,15 @@ impl Recipe {
 
     pub fn prepare(&self) -> Result<()> {
         self.unprepare()?;
-        // XXX
+
+        for depend in self.build_depends().iter() {
+            // XXX have some way to rebuild iff no built debug; have two copies
+            let mut recipe = Recipe::new(self.target.clone(), self.cookbook_dir.clone(), depend, self.debug)?;
+            recipe.fetch()?;
+            recipe.build()?; 
+            // XXX behave like repo.sh
+        }
+
         Ok(())
     }
 
